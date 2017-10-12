@@ -1,4 +1,3 @@
-
 // include the libraries!
 #include "Wire.h"
 #include "Adafruit_VCNL4010.h"
@@ -53,6 +52,7 @@ const int startThreshold = 2500;
 // other vars
 int finishReading = 0;
 int startProx = 1;
+int botReady = 0;
 
 //buzzer vars
 int toneM = 0;
@@ -136,6 +136,9 @@ void playTone() {
 }
 
 void loop() {
+
+  //Serial.println(vcnl.readProximity());
+  Serial.println(startProx);
   
   // check the finish proximity sensor for a nearby bot.  
   // only change the value if less than threshold.
@@ -168,12 +171,17 @@ void loop() {
 
       // check for a start of game.
       // only check if the threshold is met
-      if (startProx <= startThreshold) {
+      if (botReady == 0) {
+        startProx = vcnl.readProximity();
+        if (startProx >= startThreshold) {
+          botReady = 1;
+        }
+      } else if ((botReady == 1) && (startProx >= startThreshold)) {
         startProx = vcnl.readProximity();
       }
 
       // if the prox detected a game start
-      if (startProx > startThreshold) {
+      if ((startProx <= startThreshold) && (botReady == 1)) {
         
         //Set ready LED off
         digitalWrite(readyLED, LOW);
@@ -187,7 +195,7 @@ void loop() {
 
             // Say GO!
             lcd.setCursor(0, 0);
-            lcd.print("GO!     ");
+            lcd.print("GO!           ");
 
             // Show timer on LCD
             lcd.setCursor(0, 1);
@@ -236,6 +244,13 @@ void loop() {
          }
          
       // if game hasn't started, then tell player we are ready.
+      } else if (botReady == 1) {  
+        lcd.setCursor(0, 0);
+        lcd.print("Bot Loaded!   ");
+        //Set ready LED on
+        digitalWrite(readyLED, HIGH);
+        //Set go LED off
+        digitalWrite(goLED, LOW);
       } else {
           //Set ready LED on
           digitalWrite(readyLED, HIGH);
@@ -248,4 +263,3 @@ void loop() {
   }
     
 }
-
