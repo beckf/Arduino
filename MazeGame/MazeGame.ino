@@ -48,6 +48,9 @@ const int buzzerPIN = 8;
 const int finishProx = A0;
 const int finishThreshold = 500;
 const int startThreshold = 2500;
+
+const int fieldLEDs[] = {5, 6, 7};
+const int fieldLEDInterval = 200;
 const int fieldLEDG = 5;
 const int fieldLEDR = 6;
 const int fieldLEDB = 7;
@@ -56,20 +59,12 @@ const int fieldLEDB = 7;
 int finishReading = 0;
 int startProx = 1;
 int botReady = 0;
-int fieldRledState = LOW;
-int fieldGledState = LOW;
-int fieldBledState = LOW;
-unsigned long rPreviousMillis = 0;
-unsigned long gPreviousMillis = 0;
-unsigned long bPreviousMillis = 0;
-const long rInterval = 200;
-const long gInterval = 400;
-const long bInterval = 600;
+int previousMillis = 0;
+int lastLED = 0;
 
 //buzzer vars
 int toneM = 0;
 int beat = 0;
-int lastNote = 0;
 long duration  = 0;
 int rest_count = 50;
 
@@ -99,12 +94,11 @@ void setup() {
   pinMode(goLED, OUTPUT);
   pinMode(finishLED1, OUTPUT);
   pinMode(finishLED2, OUTPUT);
-  pinMode(fieldLEDG, OUTPUT);
-  pinMode(fieldLEDB, OUTPUT);
-  pinMode(fieldLEDR, OUTPUT);
-  digitalWrite(fieldLEDR, LOW);
-  digitalWrite(fieldLEDG, LOW);
-  digitalWrite(fieldLEDB, LOW);
+
+  for (int i = 0; i < 3; i++) {
+      pinMode(fieldLEDs[i], OUTPUT);
+      digitalWrite(fieldLEDs[i], LOW);
+  }
   
   // LCD Stuff
   lcd.setBacklight(HIGH);
@@ -155,16 +149,25 @@ void playTone() {
 }
 
 // Flash the field LEDs
-void flashLEDs() {
+void flashFieldLEDs() {
+  
   unsigned long currentMillis = millis();
-  if (currentMillis - gPreviousMillis >= gInterval) {
-    gPreviousMillis = currentMillis;
-    if (fieldGledState == LOW) {
-      fieldGledState = HIGH;
-    } else {
-      fieldGledState = LOW;
+
+  if (currentMillis - previousMillis >= fieldLEDInterval) {
+    
+    for (int i = 0; i < 3; i++) {
+      digitalWrite(fieldLEDs[i], LOW);
     }
-    digitalWrite(fieldLEDG, fieldGledState);
+    
+    for (int i = 0; i < 3; i++) {
+      if ((lastLED = i) && (i<2)) {
+        lastLED = i++;
+        digitalWrite(fieldLEDs[i], HIGH);
+      } else {
+        lastLED = 0;
+        digitalWrite(fieldLEDs[3], HIGH);
+      }
+    }
   }
 }
 
@@ -181,23 +184,24 @@ void loop() {
 
   // if a bot is detected at finish line then end the game
   if (finishReading >= finishThreshold) {
+    
     // write to lcd
     lcd.setCursor(0, 0);
     lcd.print("Life Saved. Win!");
-    //Flash LEDs
+    
+    //Flash Finish LEDs
     digitalWrite(finishLED1, HIGH);
     digitalWrite(finishLED2, HIGH);
 
-    // start field leds
-    digitalWrite(fieldLEDR, HIGH);
-    digitalWrite(fieldLEDG, HIGH);
-    digitalWrite(fieldLEDB, HIGH);
+    // Turn on all field LEDs
+    for (int i = 0; i < 3; i++) {
+      digitalWrite(fieldLEDs[i], HIGH);
+    }
     
     // playback the victory music
     for (int i=0; i<MAX_COUNT; i++) {
       toneM = melody2[i];
       beat = beats2[i];
-      lastNote = toneM;
       
       duration = beat * tempo; // Set up timing
  
@@ -229,45 +233,16 @@ void loop() {
 
       // if the prox detected a game start
       if ((startProx <= startThreshold) && (botReady == 1)) {
-        // Flash the field LEDs
-        unsigned long currentMillis = millis();
-        //Green
-        if (currentMillis - gPreviousMillis >= gInterval) {
-          gPreviousMillis = currentMillis;
-          if (fieldGledState == LOW) {
-            fieldGledState = HIGH;
-          } else {
-            fieldGledState = LOW;
-          }
-          digitalWrite(fieldLEDG, fieldGledState);
-        }
-        //Blue
-        if (currentMillis - bPreviousMillis >= bInterval) {
-          bPreviousMillis = currentMillis;
-          if (fieldBledState == LOW) {
-            fieldBledState = HIGH;
-          } else {
-            fieldBledState = LOW;
-          }
-          digitalWrite(fieldLEDB, fieldBledState);
-        }
-        //Red
-        if (currentMillis - rPreviousMillis >= rInterval) {
-          rPreviousMillis = currentMillis;
-          if (fieldRledState == LOW) {
-            fieldRledState = HIGH;
-          } else {
-            fieldRledState = LOW;
-          }
-          digitalWrite(fieldLEDR, fieldRledState);
-        }
-    
+        
         //Set ready LED off
         digitalWrite(readyLED, LOW);
     
         //Set go LED on
         digitalWrite(goLED, HIGH);
 
+        // Flash the field LEDs
+        flashFieldLEDs();
+        
         // start timer
         T.Timer();
         if (T.TimeHasChanged()) {       
