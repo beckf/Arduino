@@ -48,15 +48,28 @@ const int buzzerPIN = 8;
 const int finishProx = A0;
 const int finishThreshold = 500;
 const int startThreshold = 2500;
+const int fieldLEDG = 5;
+const int fieldLEDR = 6;
+const int fieldLEDB = 7;
 
 // other vars
 int finishReading = 0;
 int startProx = 1;
 int botReady = 0;
+int fieldRledState = LOW;
+int fieldGledState = LOW;
+int fieldBledState = LOW;
+unsigned long rPreviousMillis = 0;
+unsigned long gPreviousMillis = 0;
+unsigned long bPreviousMillis = 0;
+const long rInterval = 200;
+const long gInterval = 400;
+const long bInterval = 600;
 
 //buzzer vars
 int toneM = 0;
 int beat = 0;
+int lastNote = 0;
 long duration  = 0;
 int rest_count = 50;
 
@@ -86,6 +99,12 @@ void setup() {
   pinMode(goLED, OUTPUT);
   pinMode(finishLED1, OUTPUT);
   pinMode(finishLED2, OUTPUT);
+  pinMode(fieldLEDG, OUTPUT);
+  pinMode(fieldLEDB, OUTPUT);
+  pinMode(fieldLEDR, OUTPUT);
+  digitalWrite(fieldLEDR, LOW);
+  digitalWrite(fieldLEDG, LOW);
+  digitalWrite(fieldLEDB, LOW);
   
   // LCD Stuff
   lcd.setBacklight(HIGH);
@@ -135,10 +154,24 @@ void playTone() {
   }                                 
 }
 
+// Flash the field LEDs
+void flashLEDs() {
+  unsigned long currentMillis = millis();
+  if (currentMillis - gPreviousMillis >= gInterval) {
+    gPreviousMillis = currentMillis;
+    if (fieldGledState == LOW) {
+      fieldGledState = HIGH;
+    } else {
+      fieldGledState = LOW;
+    }
+    digitalWrite(fieldLEDG, fieldGledState);
+  }
+}
+
 void loop() {
 
   //Serial.println(vcnl.readProximity());
-  Serial.println(startProx);
+  //Serial.println(startProx);
   
   // check the finish proximity sensor for a nearby bot.  
   // only change the value if less than threshold.
@@ -154,16 +187,22 @@ void loop() {
     //Flash LEDs
     digitalWrite(finishLED1, HIGH);
     digitalWrite(finishLED2, HIGH);
+
+    // start field leds
+    digitalWrite(fieldLEDR, HIGH);
+    digitalWrite(fieldLEDG, HIGH);
+    digitalWrite(fieldLEDB, HIGH);
     
     // playback the victory music
     for (int i=0; i<MAX_COUNT; i++) {
-    toneM = melody2[i];
-    beat = beats2[i];
+      toneM = melody2[i];
+      beat = beats2[i];
+      lastNote = toneM;
+      
+      duration = beat * tempo; // Set up timing
  
-    duration = beat * tempo; // Set up timing
- 
-    playTone(); // A pause between notes
-    delayMicroseconds(pause);
+      playTone(); // A pause between notes
+      delayMicroseconds(pause);
     }
 
   // if the game is not over  
@@ -171,10 +210,18 @@ void loop() {
 
       // check for a start of game.
       // only check if the threshold is met
+      // botReady allows player to place bot without tripping the sensor.
       if (botReady == 0) {
         startProx = vcnl.readProximity();
+        digitalWrite(fieldLEDR, HIGH);
+        digitalWrite(fieldLEDG, LOW);
+        digitalWrite(fieldLEDB, LOW);
+        
         if (startProx >= startThreshold) {
           botReady = 1;
+          digitalWrite(fieldLEDG, HIGH);
+          digitalWrite(fieldLEDR, LOW);
+          digitalWrite(fieldLEDB, LOW);
         }
       } else if ((botReady == 1) && (startProx >= startThreshold)) {
         startProx = vcnl.readProximity();
@@ -182,7 +229,39 @@ void loop() {
 
       // if the prox detected a game start
       if ((startProx <= startThreshold) && (botReady == 1)) {
-        
+        // Flash the field LEDs
+        unsigned long currentMillis = millis();
+        //Green
+        if (currentMillis - gPreviousMillis >= gInterval) {
+          gPreviousMillis = currentMillis;
+          if (fieldGledState == LOW) {
+            fieldGledState = HIGH;
+          } else {
+            fieldGledState = LOW;
+          }
+          digitalWrite(fieldLEDG, fieldGledState);
+        }
+        //Blue
+        if (currentMillis - bPreviousMillis >= bInterval) {
+          bPreviousMillis = currentMillis;
+          if (fieldBledState == LOW) {
+            fieldBledState = HIGH;
+          } else {
+            fieldBledState = LOW;
+          }
+          digitalWrite(fieldLEDB, fieldBledState);
+        }
+        //Red
+        if (currentMillis - rPreviousMillis >= rInterval) {
+          rPreviousMillis = currentMillis;
+          if (fieldRledState == LOW) {
+            fieldRledState = HIGH;
+          } else {
+            fieldRledState = LOW;
+          }
+          digitalWrite(fieldLEDR, fieldRledState);
+        }
+    
         //Set ready LED off
         digitalWrite(readyLED, LOW);
     
