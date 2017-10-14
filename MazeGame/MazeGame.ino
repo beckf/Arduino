@@ -154,19 +154,24 @@ void flashFieldLEDs() {
   unsigned long currentMillis = millis();
 
   if (currentMillis - previousMillis >= fieldLEDInterval) {
-    
+    previousMillis = currentMillis;
     for (int i = 0; i < 3; i++) {
       digitalWrite(fieldLEDs[i], LOW);
     }
     
-    for (int i = 0; i < 3; i++) {
-      if ((lastLED = i) && (i<2)) {
-        lastLED = i++;
-        digitalWrite(fieldLEDs[i], HIGH);
-      } else {
+    switch (lastLED) {
+      case 0:
+        digitalWrite(fieldLEDs[0], HIGH);
+        ++lastLED;
+        break;
+      case 1:
+        digitalWrite(fieldLEDs[1], HIGH);
+        ++lastLED;
+        break;
+      case 2:
+        digitalWrite(fieldLEDs[2], HIGH);
         lastLED = 0;
-        digitalWrite(fieldLEDs[3], HIGH);
-      }
+        break;
     }
   }
 }
