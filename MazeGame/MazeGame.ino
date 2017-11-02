@@ -2,7 +2,7 @@
 #include "Wire.h"
 #include "Adafruit_VCNL4010.h"
 #include "Adafruit_LiquidCrystal.h"
-#include <CountUpDownTimer.h>
+#include "CountUpDownTimer.h"
 
 // map buzzer notes to actual frequencies
 #define  c3    7634
