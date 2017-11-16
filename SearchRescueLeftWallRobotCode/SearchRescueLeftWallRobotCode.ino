@@ -26,24 +26,27 @@ Servo left;
 Servo right;
 
 // Max distance that is considered still close to wall
-int frontIRWallMax = 700;
-int rearIRWallMax = 700;
+int frontIRWallMax = 35;
+int rearIRWallMax = 35;
 // Min distance that is considered too far from the wall
-int frontIRWallMin = 500; 
-int rearIRWallMin = 500;
+int frontIRWallMin = 17; 
+int rearIRWallMin = 17;
 
-int frontUSWallMin = 4;
+int frontUSWallMin = 3;
 
 int readAnalogSmooth(int pin) {
-    
-    int numReadings = 10;
+    // How many readings to take 
+    int numReadings = 8;
     int total = 0;
     int average = 0;
-    
+
     for (int thisReading = 0; thisReading < numReadings; thisReading++) {
-      total = total + analogRead(pin);
+      // convert volts into centimeters
+      float volts = analogRead(pin)*0.0048828125;
+      float distance = 65*pow(volts, -1.10);
+      total = total + distance;
     }
-    
+    // Return an average of all the readings in CM
     return total / numReadings;
 }
 
@@ -55,11 +58,60 @@ void readSensors() {
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
   frontDuration = pulseIn(echoPin, HIGH);
-  frontDistance= frontDuration*0.034/2;
+  frontDistance = frontDuration*0.034/2;
 
-  //rearLeftReading = digitalRead(rearLeftProxPIN);
   frontIRReading = readAnalogSmooth(frontProxPIN);
   rearIRReading = readAnalogSmooth(rearProxPIN);
+}
+
+void calibrateSensors() {
+  lcd.setCursor(0, 0);
+  lcd.print("CalibrateSensors");
+
+  int numReadings = 3;
+  
+  int frontUCTotal, frontIRTotal, rearIRTotal = 0;
+  
+  for (int readingCount = 0; readingCount < numReadings; readingCount++) {
+      readSensors();
+      
+      frontIRTotal = frontIRTotal + readAnalogSmooth(frontProxPIN);
+      rearIRTotal = rearIRTotal + readAnalogSmooth(rearProxPIN);
+
+      lcd.setCursor(0, 1);
+      lcd.print("                ");
+      lcd.setCursor(0, 1);
+      lcd.print("U");
+      lcd.print(frontIRReading);
+      lcd.print(" R");
+      lcd.print(rearIRReading);
+      delay(1000);
+   }
+
+    frontIRWallMin = frontIRTotal/numReadings; 
+    rearIRWallMin = rearIRTotal/numReadings;
+    frontIRWallMin = frontIRWallMin - 2;
+    rearIRWallMin = rearIRWallMin - 2;
+    frontIRWallMax = frontIRWallMin + 15;
+    rearIRWallMax = rearIRWallMin + 15;
+    
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Complete");
+    lcd.setCursor(0, 1);
+    lcd.print("Front IR:");
+    lcd.print(frontIRWallMin);
+    lcd.print(" - ");
+    lcd.print(frontIRWallMax);
+    delay(2000);
+    lcd.setCursor(0, 1);
+    lcd.print("                ");
+    lcd.setCursor(0, 1);
+    lcd.print("Rear IR:");
+    lcd.print(rearIRWallMin);
+    lcd.print(" - ");
+    lcd.print(rearIRWallMax);
+    delay(2000);
 }
 
 void setup() {
@@ -75,11 +127,25 @@ void setup() {
   left.attach(leftWheelPIN);
   right.attach(rightWheelPIN);
 
+  // Calibrate Servos
   lcd.setCursor(0, 0);
-  lcd.print("Calibration");
+  lcd.print("Calibrate Servos");
   left.write(90);
   right.write(90);
-  delay(5000);
+  for (int second = 0; second < 6; second++) {
+      lcd.setCursor(0, 1);
+      lcd.print(second);
+      delay(1000);
+   }
+  
+  // Clear the LCD
+  lcd.clear();
+
+  // Calibrate Sensrors
+  // calibrateSensors();
+  // Clear the LCD
+  lcd.clear();
+  
   
 }
 
@@ -101,9 +167,7 @@ void loop() {
       lcd.print(" F");
       lcd.print(frontDistance); 
   }
-  
 
-  
   // Slow Right Turn L95 R95
   // Slow Left Trun L85 R85
   // Straight L100 R78
@@ -111,40 +175,33 @@ void loop() {
 // What to do in a corner
  if ((frontDistance <= frontUSWallMin) && (frontIRReading <= frontIRWallMax && frontIRReading >= frontIRWallMin) && (rearIRReading <= rearIRWallMax && rearIRReading >= rearIRWallMin) ) {
     lcd.setCursor(0, 0);
-    lcd.print("Corner- Go Right");
-    left.write(90);
-    right.write(90);
-    delay(250);
-    
-    readSensors();
-    while ( !(frontIRReading <= frontIRWallMax && frontIRReading >= frontIRWallMin) && !(rearIRReading <= rearIRWallMax && rearIRReading >= rearIRWallMin) ) {
-      if (debug == 0) {
-        left.write(95);
-        right.write(95);
-      }
-      readSensors();
+    lcd.print("   Corner:    ->");
+    if (debug == 0) {
+        left.write(100);
+        right.write(50);
     }
     
  // What to do when a wall is found.
  } else if ((frontIRReading <= frontIRWallMax && frontIRReading >= frontIRWallMin) && (rearIRReading <= rearIRWallMax && rearIRReading >= rearIRWallMin)) {
-    lcd.setCursor(0, 0);
-    lcd.print("Wall Found      ");
     readSensors();
-    if (frontIRReading > rearIRReading) {
-      float rate = frontIRReading / rearIRReading;
-      int degree = rate * 5;
-      left.write(max(100 - degree, 90));
-      right.write(78);
-    } else {
-      float rate = rearIRReading / frontIRReading;
-      int degree = rate * 5;
+    while (frontIRReading > rearIRReading) {
+      lcd.setCursor(0, 0);
+      lcd.print("<- Wall Found   ");
       left.write(100);
-      right.write(min(78 + degree, 90));
+      right.write(70);
+      readSensors();
+    } 
+    while (frontIRReading < rearIRReading) {
+      lcd.setCursor(0, 0);
+      lcd.print("   Wall Found ->");
+      left.write(108);
+      right.write(78);
+      readSensors();
     }
  } else {
-    left.write(90);
-    right.write(90);
     lcd.setCursor(0, 0);
-    lcd.print("No Wall        ");
+    lcd.print("   Wall?        ");
+    left.write(100);
+    right.write(70);
  }
 }
