@@ -1,11 +1,9 @@
+#include <Ultrasonic.h>
 #include <Servo.h>
 #include "Wire.h"
 #include "Adafruit_LiquidCrystal.h"
 
-const int trigPin = 5;
-const int echoPin = 6;
-
-const int lcdSensorsInterval = 1000;
+const int lcdSensorsInterval = 500;
 unsigned long lcdPreviousMillis = 0;
 
 int frontIRReading, rearIRReading;
@@ -24,6 +22,7 @@ int debug = 0;
 Adafruit_LiquidCrystal lcd(0);
 Servo left;
 Servo right;
+Ultrasonic ultrasonic(5, 6, 30000UL);
 
 // Max distance that is considered still close to wall
 int frontIRWallMax = 35;
@@ -32,7 +31,7 @@ int rearIRWallMax = 35;
 int frontIRWallMin = 17; 
 int rearIRWallMin = 17;
 
-int frontUSWallMin = 3;
+int frontUSWallMin = 5;
 
 int readAnalogSmooth(int pin) {
     // How many readings to take 
@@ -52,14 +51,7 @@ int readAnalogSmooth(int pin) {
 
 void readSensors() {
   //Ultrasonic Readings
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-  frontDuration = pulseIn(echoPin, HIGH);
-  frontDistance = frontDuration*0.034/2;
-
+  frontDistance = ultrasonic.distanceRead(CM);
   frontIRReading = readAnalogSmooth(frontProxPIN);
   rearIRReading = readAnalogSmooth(rearProxPIN);
 }
@@ -121,9 +113,6 @@ void setup() {
   lcd.begin(16, 2);
   lcd.setBacklight(HIGH);
   
-  pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, INPUT);
-  
   left.attach(leftWheelPIN);
   right.attach(rightWheelPIN);
 
@@ -173,12 +162,13 @@ void loop() {
   // Straight L100 R78
 
 // What to do in a corner
- if ((frontDistance <= frontUSWallMin) && (frontIRReading <= frontIRWallMax && frontIRReading >= frontIRWallMin) && (rearIRReading <= rearIRWallMax && rearIRReading >= rearIRWallMin) ) {
+ if ((frontDistance <= frontUSWallMin) && (frontDistance > 0)) {
     lcd.setCursor(0, 0);
     lcd.print("   Corner:    ->");
     if (debug == 0) {
-        left.write(100);
-        right.write(50);
+        left.write(95);
+        right.write(95);
+        delay(250);
     }
     
  // What to do when a wall is found.
