@@ -3,9 +3,6 @@
 #include "Wire.h"
 #include "Adafruit_LiquidCrystal.h"
 
-const int lcdSensorsInterval = 500;
-unsigned long lcdPreviousMillis = 0;
-
 int frontIRReading, rearIRReading;
 int frontProxPIN = A1;
 int rearProxPIN = A2;
@@ -16,6 +13,12 @@ int leftWheelPIN = 10;
 long frontDuration;
 int frontDistance;
 
+// Blinky LED without any delay
+const int ledPin =  LED_BUILTIN;
+int ledState = LOW;
+unsigned long previousMillis = 0;
+const long interval = 1000;
+
 // if debug = 1, then do not move servos.
 int debug = 0;
 
@@ -24,15 +27,18 @@ Servo left;
 Servo right;
 Ultrasonic ultrasonic(5, 6, 30000UL);
 
+// Create a wall buffer to stay in
 // Max distance that is considered still close to wall
 int frontIRWallMax = 35;
 int rearIRWallMax = 35;
 // Min distance that is considered too far from the wall
 int frontIRWallMin = 17; 
 int rearIRWallMin = 17;
-
+// Distance in front in CM.
 int frontUSWallMin = 5;
 
+// Read the analog sensors several times and return an average.
+// Helps smooth out irregular in readings.
 int readAnalogSmooth(int pin) {
     // How many readings to take 
     int numReadings = 8;
@@ -49,13 +55,18 @@ int readAnalogSmooth(int pin) {
     return total / numReadings;
 }
 
+// Read all the sensors.
 void readSensors() {
   //Ultrasonic Readings
   frontDistance = ultrasonic.distanceRead(CM);
+  // IRs
   frontIRReading = readAnalogSmooth(frontProxPIN);
   rearIRReading = readAnalogSmooth(rearProxPIN);
 }
 
+// Function to allow the bot to take several readings from the IRs to 
+// determine what is considered close to the wall.
+// To use, place bot on left wall and call function in setup()
 void calibrateSensors() {
   lcd.setCursor(0, 0);
   lcd.print("CalibrateSensors");
@@ -107,8 +118,9 @@ void calibrateSensors() {
 }
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(9600);
+
+  pinMode(ledPin, OUTPUT);
 
   lcd.begin(16, 2);
   lcd.setBacklight(HIGH);
@@ -126,37 +138,46 @@ void setup() {
       lcd.print(second);
       delay(1000);
    }
-  
-  // Clear the LCD
+
   lcd.clear();
 
-  // Calibrate Sensrors
-  // calibrateSensors();
-  // Clear the LCD
-  lcd.clear();
-  
-  
 }
 
 void loop() {
 
-  readSensors();
+  // Blinky LED
   unsigned long currentMillis = millis();
-  
-  // Output Readings to LCD
-  if (currentMillis - lcdPreviousMillis >= lcdSensorsInterval) {
-    lcdPreviousMillis = currentMillis;
-      lcd.setCursor(0, 1);
-      lcd.print("                ");
-      lcd.setCursor(0, 1);
-      lcd.print("U");
-      lcd.print(frontIRReading);
-      lcd.print(" R");
-      lcd.print(rearIRReading);
-      lcd.print(" F");
-      lcd.print(frontDistance); 
+
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+
+    if (ledState == LOW) {
+      ledState = HIGH;
+    } else {
+      ledState = LOW;
+    }
+
+    digitalWrite(ledPin, ledState);
   }
 
+  // Delay the entire loop to prevent sensors from overpowering
+  delay(50);
+
+  // Read Sensors
+  readSensors();
+  
+  // Output Readings to LCD
+  lcd.setCursor(0, 1);
+  lcd.print("                ");
+  lcd.setCursor(0, 1);
+  lcd.print("U");
+  lcd.print(frontIRReading);
+  lcd.print(" R");
+  lcd.print(rearIRReading);
+  lcd.print(" F");
+  lcd.print(frontDistance); 
+
+  // Servo Directions and Speeds:
   // Slow Right Turn L95 R95
   // Slow Left Trun L85 R85
   // Straight L100 R78
@@ -166,6 +187,12 @@ void loop() {
     lcd.setCursor(0, 0);
     lcd.print("   Corner:    ->");
     if (debug == 0) {
+        // Backup
+        left.write(80);
+        right.write(102);
+        delay(250);
+
+        // Turn Right
         left.write(95);
         right.write(95);
         delay(250);
@@ -175,6 +202,7 @@ void loop() {
  } else if ((frontIRReading <= frontIRWallMax && frontIRReading >= frontIRWallMin) && (rearIRReading <= rearIRWallMax && rearIRReading >= rearIRWallMin)) {
     readSensors();
     while (frontIRReading > rearIRReading) {
+      // Veer to the left
       lcd.setCursor(0, 0);
       lcd.print("<- Wall Found   ");
       left.write(100);
@@ -182,6 +210,7 @@ void loop() {
       readSensors();
     } 
     while (frontIRReading < rearIRReading) {
+      // Veer to the right
       lcd.setCursor(0, 0);
       lcd.print("   Wall Found ->");
       left.write(108);
@@ -189,6 +218,7 @@ void loop() {
       readSensors();
     }
  } else {
+    // Make slow left circle till wall is found.
     lcd.setCursor(0, 0);
     lcd.print("   Wall?        ");
     left.write(100);
