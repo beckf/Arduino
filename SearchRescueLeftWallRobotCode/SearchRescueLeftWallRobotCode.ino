@@ -13,11 +13,9 @@ int leftWheelPIN = 10;
 long frontDuration;
 int frontDistance;
 
-// Blinky LED without any delay
-const int ledPin =  LED_BUILTIN;
-int ledState = LOW;
-unsigned long previousMillis = 0;
-const long interval = 1000;
+// Sensor Error Checking
+int sensorSameReadingCount = 0;
+int previousFrontDistance = 0;
 
 // if debug = 1, then do not move servos.
 int debug = 0;
@@ -120,7 +118,6 @@ void calibrateSensors() {
 void setup() {
   Serial.begin(9600);
 
-  pinMode(ledPin, OUTPUT);
 
   lcd.begin(16, 2);
   lcd.setBacklight(HIGH);
@@ -140,32 +137,35 @@ void setup() {
    }
 
   lcd.clear();
-
+  
 }
 
 void loop() {
-
-  // Blinky LED
-  unsigned long currentMillis = millis();
-
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-
-    if (ledState == LOW) {
-      ledState = HIGH;
-    } else {
-      ledState = LOW;
-    }
-
-    digitalWrite(ledPin, ledState);
-  }
-
-  // Delay the entire loop to prevent sensors from overpowering
-  delay(50);
-
   // Read Sensors
   readSensors();
   
+  if (previousFrontDistance == frontDistance) {
+    sensorSameReadingCount = sensorSameReadingCount + 1;
+  }
+
+  if (sensorSameReadingCount >=10) {
+    lcd.setCursor(0, 0);
+    lcd.print("Am I stuck? ");
+    // Backup
+    left.write(80);
+    right.write(102);
+    delay(250);
+    left.write(90);
+    right.write(90);
+    delay(1000);
+    readSensors();
+    delay(1000);
+    sensorSameReadingCount = 0;
+  }
+  
+  // Delay the entire loop to prevent sensors from overpowering
+  delay(50);
+
   // Output Readings to LCD
   lcd.setCursor(0, 1);
   lcd.print("                ");
@@ -224,4 +224,7 @@ void loop() {
     left.write(100);
     right.write(70);
  }
+
+ previousFrontDistance = frontDistance;
+ 
 }
