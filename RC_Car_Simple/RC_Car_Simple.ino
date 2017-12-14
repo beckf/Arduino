@@ -4,7 +4,7 @@
  *  
  *  Setup for two servos that drive like a tank.
  *  
- *  Sensor codes below are setup for black IR remotes.
+ *  Sensor codes below are setup for black Adafruit IR remotes.
  */
 
 // Include IR Sensor library
