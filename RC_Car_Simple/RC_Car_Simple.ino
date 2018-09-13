@@ -44,18 +44,17 @@ void loop() {
   //Continue looping until you get a complete signal received
   if (myReceiver.getResults()) {
     myDecoder.decode();
-    myDecoder.dumpResults(true);
     
     if(myDecoder.protocolNum==MY_PROTOCOL) {
       
          if(myDecoder.value==0xFFFFFFFF)
            myDecoder.value=Previous;
            switch(myDecoder.value) {
-              case LEFT_ARROW:    leftServo.write(135); rightServo.write(45); break;
-              case RIGHT_ARROW:   leftServo.write(45); rightServo.write(135); break;
-              case UP_ARROW:      leftServo.write(0); rightServo.write(180); break;
-              case DOWN_ARROW:    leftServo.write(180); rightServo.write(0); break;
-              case STOP:          leftServo.write(90); rightServo.write(90); break;
+              case LEFT_ARROW:    Serial.println("Heard LEFT"); leftServo.write(135); rightServo.write(45); break;
+              case RIGHT_ARROW:   Serial.println("Heard RIGHT");leftServo.write(45); rightServo.write(135); break;
+              case UP_ARROW:      Serial.println("Heard UP");leftServo.write(0); rightServo.write(180); break;
+              case DOWN_ARROW:    Serial.println("Heard DOWN");leftServo.write(180); rightServo.write(0); break;
+              case STOP:          Serial.println("Heard STOP");leftServo.write(90); rightServo.write(90); break;
            }
          Previous=myDecoder.value;
      }
