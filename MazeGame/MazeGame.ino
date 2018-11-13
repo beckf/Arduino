@@ -34,10 +34,7 @@
 #define  R     0
 
 // create new lcd
-Adafruit_LiquidCrystal lcd(3, 2, 4);
-
-// create new vcnl for starter proximity sensor
-Adafruit_VCNL4010 vcnl;
+Adafruit_LiquidCrystal lcd(0);
 
 // establish some constatnts
 const int readyLED = 13;
@@ -48,12 +45,13 @@ const int buzzerPIN = 8;
 const int finishProx = A0;
 const int finishThreshold = 500;
 const int startThreshold = 2500;
+const int startBeam = 8;
 
-const int fieldLEDs[] = {5, 6, 7};
+const int fieldLEDs[] = {2, 3, 4};
 const int fieldLEDInterval = 200;
-const int fieldLEDG = 5;
-const int fieldLEDR = 6;
-const int fieldLEDB = 7;
+const int fieldLEDG = 2;
+const int fieldLEDR = 3;
+const int fieldLEDB = 4;
 
 // other vars
 int finishReading = 0;
@@ -99,10 +97,13 @@ void setup() {
       pinMode(fieldLEDs[i], OUTPUT);
       digitalWrite(fieldLEDs[i], LOW);
   }
+  digitalWrite(3, HIGH);
   
   // LCD Stuff
   lcd.setBacklight(HIGH);
   lcd.begin(16, 2);
+  lcd.setCursor(0, 0);
+  lcd.print("Starting up.");
 
   //Serial Stuff
   Serial.begin(9600);
@@ -113,12 +114,6 @@ void setup() {
 
   //Buzzer Stuff
   pinMode(buzzerPIN, OUTPUT);
-
-  // Wait for starting proximity sensor to be found
-  if (! vcnl.begin()){
-    Serial.println("Sensor not found!");
-    while (1);
-  }
   
 }
 
@@ -221,21 +216,10 @@ void loop() {
       // only check if the threshold is met
       // botReady allows player to place bot without tripping the sensor.
       if (botReady == 0) {
-        startProx = vcnl.readProximity();
         digitalWrite(fieldLEDR, HIGH);
         digitalWrite(fieldLEDG, LOW);
         digitalWrite(fieldLEDB, LOW);
-        
-        if (startProx >= startThreshold) {
-          botReady = 1;
-          digitalWrite(fieldLEDG, HIGH);
-          digitalWrite(fieldLEDR, LOW);
-          digitalWrite(fieldLEDB, LOW);
-        }
-      } else if ((botReady == 1) && (startProx >= startThreshold)) {
-        startProx = vcnl.readProximity();
-      }
-
+      } 
       // if the prox detected a game start
       if ((startProx <= startThreshold) && (botReady == 1)) {
         
