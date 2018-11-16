@@ -1,3 +1,5 @@
+
+// Include Libraries
 #include <SharpIR.h>
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
@@ -7,6 +9,7 @@
 // Create the motor shield object with the default I2C address
 Adafruit_MotorShield AFMS = Adafruit_MotorShield(); 
 
+// Create DC motors
 Adafruit_DCMotor *left = AFMS.getMotor(4);
 Adafruit_DCMotor *right = AFMS.getMotor(3);
 
@@ -16,6 +19,7 @@ SharpIR frontSensor( SharpIR::GP2Y0A21YK0F, A0 );
 // VCNL Left Sensor
 Adafruit_VCNL4010 vcnl;
 
+// Variables to hold data.
 int leftDistance;
 int frontDistance;
 int ledInterval = 1000;
@@ -26,9 +30,13 @@ const int blueLED = 12;
 
 void setup() {
   Serial.begin(9600);
+
+  // Start motorsheild
   AFMS.begin();
+  // Start vcnl
   vcnl.begin();
-  
+
+  // Stop motors
   left->run(RELEASE);
   right->run(RELEASE);
 
@@ -48,15 +56,15 @@ void loop() {
 
     // Toggle LEDs
     unsigned long currentMillis = millis();
-  
+
+    // Don't allow LED to remain the same for longer than the interval
     if (currentMillis - previousMillis >= ledInterval) {
       digitalWrite(redLED, LOW);
       digitalWrite(greenLED, LOW);
       digitalWrite(blueLED, LOW);
     }
     
-    if (frontDistance <= 11) {
-      
+    if (frontDistance <= 9) {
       // What to do if the wall is too close.
       // Need to stop and turn right.
       digitalWrite(redLED, HIGH);
@@ -70,13 +78,12 @@ void loop() {
       while (frontDistance < 18) {
         // Wait here until we move away from wall in front.
         // Prevents rest of loop from running.
-
         // Check to see if wall is still close
         frontDistance = frontSensor.getDistance();
-        delay(500);
+        delay(300);
       }
 
-    } else if (frontDistance < 18) {
+    } else if (frontDistance < 15) {
       digitalWrite(greenLED, HIGH);
       // If Front Sensor is within 18cm
       // Make gradual turn right.
