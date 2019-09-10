@@ -8,65 +8,61 @@
  */
 
 // Include IR Sensor library
-#include "IRLibAll.h"
+#include <IRremote.h>
 
 // Include the servo library.
 #include <Servo.h>
 
-#define MY_PROTOCOL NEC
-#define RIGHT_ARROW 0xfd50af
-#define LEFT_ARROW 0xfd10ed
-#define STOP 0xfd609f
+// Constants
+// Apple Remote Values in 32bit.
+const unsigned long up = 2011254929;
+const unsigned long down = 2011246737;
+const unsigned long left = 2011271313;
+const unsigned long right = 2011259025;
+const unsigned long center = 2011249297;
+const unsigned long play = 2011298449;
+const unsigned long menu = 2011283601;
 
 //Create a receiver object to listen on pin 2
-IRrecvPCI myReceiver(2);
+int RECV_PIN = 11;
+IRrecv irrecv(RECV_PIN);
+decode_results results;
 
 // create servo object to control a servo
-Servo servo1;
+Servo servo1;  
 
-//Create a decoder object 
-IRdecode myDecoder;   
-
-int16_t pos;         // variable to store the servo position 
-int16_t Speed;       // Number of degrees to move each time a left/right button is pressed
-uint32_t Previous;   //handles NEC repeat codes
-int a = 0;
+// Variables
+int pos;
 
 void setup() {
+  // Start the Serial Monitor so we can output debugging test to it.
   Serial.begin(9600);
-  delay(2000); while (!Serial); //delay for Leonardo
-  myReceiver.enableIRIn(); // Start the receiver
+
+  // Enable the IR library.
+  Serial.println("Enabling IRin");
+  irrecv.enableIRIn(); // Start the receiver
+  Serial.println("Enabled IRin");\
   Serial.println(F("Ready to receive IR signals"));
-  // attaches the servo on pin 10 to the servo object
+  
+  // attaches the servo on pin 9 to the servo object
   servo1.attach(9);
-  // initialize the digital pin 2 (proximity sensor) as an input
-  pinMode(3, INPUT);
-  pos = 90;
-  Speed = 3;
+  
 }
 
 void loop() {
-  delay(1000);
-  a = digitalRead(3);
-  Serial.println(a);
   //Continue looping until you get a complete signal received
-  if (myReceiver.getResults()) {
-    myDecoder.decode();           //Decode it
-    myDecoder.dumpResults(true);  //Now print results. Use false for less detail
-
-    if(myDecoder.protocolNum==MY_PROTOCOL) {
-         if(myDecoder.value==0xFFFFFFFF)
-           myDecoder.value=Previous;
-         switch(myDecoder.value) {
-            case LEFT_ARROW:    pos=min(180,pos+Speed); break;
-            case RIGHT_ARROW:   pos=max(0,pos-Speed); break;
-            case STOP:          pos=90; break;
-         }
-         servo1.write(pos); // tell servo to go to position in variable 'pos' 
-         Previous=myDecoder.value;
-       }
+  unsigned long current = 0;
+  if (irrecv.decode(&results)) {
+    unsigned long current = results.value;
+    Serial.println(current);
+    switch(current) {
+      case left:    pos=170; break;
+      case right:   pos=10; break;
+      case center:  pos=90; break;
+    }
     
-    myReceiver.enableIRIn();      //Restart receiver
-    
+      servo1.write(pos); // tell servo to go to position in variable 'pos' 
+    // Prepare for next value
+    irrecv.resume(); // Receive the next value  
   }
 }
