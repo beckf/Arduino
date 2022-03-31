@@ -4,8 +4,13 @@
  *  For photo see here:
  *  http://labs.da.org/~fbeck/robotics/examples/ir_sensor.jpg
  *  
- * Sensor codes below are setup for black IR remotes.
  */
+
+// Blink LED
+const int ledPin =  LED_BUILTIN;
+int ledState = LOW;
+unsigned long previousMillis = 0;
+const long interval = 1000;
 
 // Include IR Sensor library
 #include <IRremote.h>
